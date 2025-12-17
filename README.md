@@ -1,4 +1,4 @@
-# Uinswap - Decentralized Exchange Mobile App
+# Uniswap - Decentralized Exchange Mobile App
 
 A cross-platform mobile application for decentralized cryptocurrency trading, built with React Native and Expo.
 
