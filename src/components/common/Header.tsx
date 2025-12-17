@@ -1,0 +1,100 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+interface HeaderProps {
+  address: string;
+  onAvatarPress: () => void;
+  onSearchPress: () => void;
+}
+
+export const Header = ({ address, onAvatarPress, onSearchPress }: HeaderProps) => {
+  const [searchScale] = React.useState(() => new Animated.Value(1));
+  const shortenAddress = (addr: string) => {
+    return addr.slice(0, 8) + '.eth';
+  };
+
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={onAvatarPress}>
+        <LinearGradient
+          colors={['#FF007A', '#FF6B00']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        >
+          <Image
+            source={{ uri: `https://avatars.dicebear.com/api/jdenticon/${address}.svg` }}
+            style={styles.avatar}
+          />
+        </LinearGradient>
+        <Text style={styles.address}>{shortenAddress(address)}</Text>
+        <Ionicons name="chevron-down" size={20} color="#000" />
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[styles.searchButton, {
+          transform: [{ scale: searchScale }]
+        }]}
+        onPressIn={() => {
+          Animated.spring(searchScale, {
+            toValue: 0.9,
+            useNativeDriver: true,
+          }).start();
+        }}
+        onPressOut={() => {
+          Animated.spring(searchScale, {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
+        }}
+        onPress={onSearchPress}
+      >
+        <Ionicons name="search" size={24} color="#FF007A" />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  avatarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFE5F0',
+    padding: 8,
+    borderRadius: 25,
+  },
+  gradient: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    padding: 2,
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
+    backgroundColor: '#FFF',
+  },
+  address: {
+    marginHorizontal: 8,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFE5F0',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
