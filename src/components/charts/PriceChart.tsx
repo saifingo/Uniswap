@@ -1,6 +1,12 @@
-import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Dimensions, Animated } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 interface PriceChartProps {
   data: number[];
@@ -9,8 +15,20 @@ interface PriceChartProps {
 }
 
 export const PriceChart = ({ data, labels, color = '#FF007A' }: PriceChartProps) => {
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.9);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 1000 });
+    scale.value = withSpring(1, { damping: 12 });
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
   return (
-    <View style={styles.container}>
+    <Reanimated.View style={[styles.container, animatedStyle]}>
       <LineChart
         data={{
           labels,
@@ -33,7 +51,7 @@ export const PriceChart = ({ data, labels, color = '#FF007A' }: PriceChartProps)
         bezier
         style={styles.chart}
       />
-    </View>
+    </Reanimated.View>
   );
 };
 

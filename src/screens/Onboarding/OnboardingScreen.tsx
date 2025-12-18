@@ -81,8 +81,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 120,
-    height: 120,
+    marginTop: 40,
+    width: 300,
+    height: 300,
     tintColor: '#FF007A',
   },
   textContainer: {
