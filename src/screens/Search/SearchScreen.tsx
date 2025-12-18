@@ -84,7 +84,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const renderToken: ListRenderItem<Token> = useCallback(({ item }) => (
     <TouchableOpacity
       style={styles.tokenItem}
-      onPress={() => navigation.navigate('TokenDetails', { token: item })}
+      onPress={() => navigation.navigate('Token', { token: item })}
     >
       <View style={styles.tokenInfo}>
         <View style={styles.tokenIcon}>

@@ -1,143 +1,252 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Card } from '../../components/common/Card';
-import { PriceChart } from '../../components/charts/PriceChart';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Image,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LineChart } from 'react-native-chart-kit';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFavorites } from '../../context/FavoritesContext';
 
-export const TokenDetailsScreen = () => {
-  const tokenData = {
-    symbol: 'ETH',
-    name: 'Ethereum',
-    price: '$1,800.00',
-    change: '+2.5%',
-    marketCap: '$219.8B',
-    volume24h: '$12.5B',
-    high24h: '$1,850.00',
-    low24h: '$1,780.00',
-    chartData: {
-      data: [1800, 1820, 1810, 1830, 1825, 1835, 1830],
-      labels: ['1H', '1D', '1W', '1M', '1Y'],
-    },
-  };
+interface Token {
+  id: string;
+  name: string;
+  symbol: string;
+  price: string;
+  change: number;
+  marketCap?: string;
+  volume?: string;
+  icon?: string;
+  description?: string;
+}
 
-  const timeFrames = ['1H', '1D', '1W', '1M', '1Y'];
-  
+interface ChartData {
+  labels: string[];
+  datasets: {
+    data: number[];
+  }[];
+}
+
+const CHART_DATA: ChartData = {
+  labels: ['H', 'D', 'W', 'Y'],
+  datasets: [{
+    data: [20, 45, 28, 80, 99, 43],
+  }],
+};
+
+const screenWidth = Dimensions.get('window').width;
+
+export const TokenDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
+  const { token } = route.params;
+  const [timeframe, setTimeframe] = useState<'H' | 'D' | 'W' | 'Y'>('D');
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const [isTokenFavorite, setIsTokenFavorite] = useState(false);
+
+  useEffect(() => {
+    setIsTokenFavorite(isFavorite(token.id));
+  }, [isFavorite, token.id]);
+
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.tokenInfo}>
-          <View style={styles.tokenIcon}>
-            <Text style={styles.tokenIconText}>{tokenData.symbol[0]}</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={() => {
+            if (isTokenFavorite) {
+              removeFavorite(token.id);
+            } else {
+              addFavorite(token);
+            }
+            setIsTokenFavorite(!isTokenFavorite);
+          }}
+        >
+          <Ionicons 
+            name={isTokenFavorite ? 'star' : 'star-outline'}
+            size={24}
+            color="#FF007A"
+          />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content}>
+        <View style={styles.tokenHeader}>
+          <View style={styles.tokenInfo}>
+            <View style={styles.tokenIcon}>
+              {token.icon ? (
+                <Image source={{ uri: token.icon }} style={styles.tokenIconImage} />
+              ) : (
+                <Text style={styles.tokenIconText}>{token.symbol[0]}</Text>
+              )}
+            </View>
+            <View>
+              <Text style={styles.tokenName}>{token.name}</Text>
+              <Text style={styles.tokenSymbol}>{token.symbol}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.tokenName}>{tokenData.name}</Text>
-            <Text style={styles.tokenSymbol}>{tokenData.symbol}</Text>
+          <View style={styles.priceInfo}>
+            <Text style={styles.tokenPrice}>${token.price}</Text>
+            <Text style={[styles.tokenChange, { color: token.change < 0 ? '#FF4D4D' : '#00C853' }]}>
+              {token.change > 0 ? '+' : ''}{token.change}%
+            </Text>
           </View>
         </View>
-        <View style={styles.priceInfo}>
-          <Text style={styles.tokenPrice}>{tokenData.price}</Text>
-          <Text style={[
-            styles.priceChange,
-            { color: tokenData.change.startsWith('+') ? '#00C853' : '#FF4D4D' }
-          ]}>
-            {tokenData.change}
+
+        <View style={styles.chartContainer}>
+          <LineChart
+            data={CHART_DATA}
+            width={screenWidth - 32}
+            height={220}
+            chartConfig={{
+              backgroundGradientFrom: '#FFF',
+              backgroundGradientTo: '#FFF',
+              decimalPlaces: 2,
+              color: () => '#FF007A',
+              labelColor: () => '#666',
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: '6',
+                strokeWidth: '2',
+                stroke: '#FF007A',
+              },
+            }}
+            bezier
+            style={styles.chart}
+            withInnerLines={false}
+            withOuterLines={false}
+          />
+
+          <View style={styles.timeframes}>
+            {['H', 'D', 'W', 'Y'].map((frame) => (
+              <TouchableOpacity
+                key={frame}
+                style={[styles.timeframe, timeframe === frame && styles.timeframeActive]}
+                onPress={() => setTimeframe(frame as typeof timeframe)}
+              >
+                <Text style={[styles.timeframeText, timeframe === frame && styles.timeframeTextActive]}>
+                  {frame}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.holdingCard}>
+          <Text style={styles.holdingTitle}>My position</Text>
+          <View style={styles.holdingInfo}>
+            <View style={styles.holdingAmount}>
+              <View style={styles.tokenIconSmall}>
+                {token.icon ? (
+                  <Image source={{ uri: token.icon }} style={styles.tokenIconImage} />
+                ) : (
+                  <Text style={styles.tokenIconTextSmall}>{token.symbol[0]}</Text>
+                )}
+              </View>
+              <Text style={styles.holdingValue}>21.246 {token.symbol}</Text>
+            </View>
+            <Text style={styles.holdingUsdValue}>$351.91</Text>
+          </View>
+        </View>
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.buyButton]}
+            onPress={() => navigation.navigate('Buy', { token })}
+          >
+            <Ionicons name="card" size={24} color="#FFF" />
+            <Text style={styles.actionButtonText}>Buy</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.swapButton]}
+            onPress={() => navigation.navigate('Swap', { token })}
+          >
+            <Ionicons name="swap-horizontal" size={24} color="#FFF" />
+            <Text style={styles.actionButtonText}>Swap</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutTitle}>About</Text>
+          <Text style={styles.aboutText}>
+            {token.description || `${token.name} (${token.symbol}) is an Ethereum token that powers ${token.name}, an automated liquidity provider that's designed to make it easy to exchange Ethereum (ERC-20) tokens. There is no orderbook or central facilitator on Uniswap. Instead, tokens are exchanged through liquidity pools that are defined by smart contracts.`}
           </Text>
         </View>
-      </View>
-
-      <Card>
-        <PriceChart
-          data={tokenData.chartData.data}
-          labels={tokenData.chartData.labels}
-        />
-        <View style={styles.timeFrames}>
-          {timeFrames.map((frame, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.timeFrameButton,
-                frame === '1D' && styles.timeFrameButtonActive
-              ]}
-            >
-              <Text style={[
-                styles.timeFrameText,
-                frame === '1D' && styles.timeFrameTextActive
-              ]}>
-                {frame}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Card>
-
-      <Card style={styles.statsCard}>
-        <Text style={styles.statsTitle}>Market Stats</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Market Cap</Text>
-            <Text style={styles.statValue}>{tokenData.marketCap}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Volume 24h</Text>
-            <Text style={styles.statValue}>{tokenData.volume24h}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>24h High</Text>
-            <Text style={styles.statValue}>{tokenData.high24h}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>24h Low</Text>
-            <Text style={styles.statValue}>{tokenData.low24h}</Text>
-          </View>
-        </View>
-      </Card>
-
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={[styles.actionButton, styles.buyButton]}>
-          <Text style={styles.actionButtonText}>Buy</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.sellButton]}>
-          <Text style={styles.actionButtonText}>Sell</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFF',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
+  },
+  backButton: {
+    padding: 8,
+  },
+  favoriteButton: {
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+  },
+  tokenHeader: {
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   tokenInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   tokenIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FF007A',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  tokenIconImage: {
+    width: '100%',
+    height: '100%',
   },
   tokenIconText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
   },
   tokenName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
+    color: '#000',
   },
   tokenSymbol: {
+    fontSize: 16,
     color: '#666',
     marginTop: 4,
   },
@@ -147,75 +256,136 @@ const styles = StyleSheet.create({
   tokenPrice: {
     fontSize: 20,
     fontWeight: '600',
+    color: '#000',
   },
-  priceChange: {
+  tokenChange: {
+    fontSize: 16,
     marginTop: 4,
-    fontWeight: '500',
   },
-  timeFrames: {
+  chartContainer: {
+    padding: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  timeframes: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     marginTop: 16,
   },
-  timeFrameButton: {
-    paddingVertical: 8,
+  timeframe: {
     paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
+    marginHorizontal: 4,
   },
-  timeFrameButtonActive: {
+  timeframeActive: {
     backgroundColor: '#FF007A',
   },
-  timeFrameText: {
+  timeframeText: {
+    fontSize: 16,
     color: '#666',
-    fontWeight: '500',
   },
-  timeFrameTextActive: {
+  timeframeTextActive: {
     color: '#FFF',
+    fontWeight: '600',
   },
-  statsCard: {
-    margin: 16,
+  holdingCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  statsTitle: {
+  holdingTitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 12,
+  },
+  holdingInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  holdingAmount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tokenIconSmall: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FF007A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    overflow: 'hidden',
+  },
+  tokenIconTextSmall: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  holdingValue: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
+    color: '#000',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  holdingUsdValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
   },
-  statItem: {
-    width: '50%',
-    marginBottom: 16,
-  },
-  statLabel: {
-    color: '#666',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  actionButtons: {
+  actions: {
     flexDirection: 'row',
     padding: 16,
+    gap: 16,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 25,
-    marginHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 30,
+    gap: 8,
   },
   buyButton: {
     backgroundColor: '#FF007A',
   },
-  sellButton: {
-    backgroundColor: '#FF4D4D',
+  swapButton: {
+    backgroundColor: '#FF007A',
   },
   actionButtonText: {
     color: '#FFF',
-    textAlign: 'center',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+  },
+  aboutSection: {
+    padding: 16,
+  },
+  aboutTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  aboutText: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 24,
   },
 });

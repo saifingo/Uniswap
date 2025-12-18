@@ -1,85 +1,212 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image } from 'react-native';
-import { Card } from '../../components/common/Card';
+import { useFavorites } from '../../context/FavoritesContext';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  TextInput,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Header } from '../../components/common/Header';
 
-export const ExploreScreen = () => {
+interface Token {
+  id: string;
+  name: string;
+  symbol: string;
+  price: string;
+  change: number;
+  marketCap?: string;
+  volume?: string;
+  icon?: string;
+}
+
+const INITIAL_TOKENS: Token[] = [
+  {
+    id: '1',
+    name: 'Ether',
+    symbol: 'ETH',
+    price: '1,900.00',
+    change: -0.28,
+    marketCap: '230B',
+    volume: '12.5B',
+    icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+  },
+  {
+    id: '2',
+    name: 'Uniswap',
+    symbol: 'UNI',
+    price: '16.57',
+    change: -1.56,
+    marketCap: '5.2B',
+    volume: '245M',
+    icon: 'https://cryptologos.cc/logos/uniswap-uni-logo.png',
+  },
+  {
+    id: '3',
+    name: 'ChainLink',
+    symbol: 'LINK',
+    price: '15.58',
+    change: 1.11,
+    marketCap: '7.8B',
+    volume: '456M',
+    icon: 'https://cryptologos.cc/logos/chainlink-link-logo.png',
+  },
+  {
+    id: '4',
+    name: 'Compound',
+    symbol: 'COMP',
+    price: '379.22',
+    change: 0.08,
+    marketCap: '2.1B',
+    volume: '198M',
+    icon: 'https://cryptologos.cc/logos/compound-comp-logo.png',
+  },
+  {
+    id: '5',
+    name: 'Aave',
+    symbol: 'AAVE',
+    price: '255.01',
+    change: -0.22,
+    marketCap: '3.3B',
+    volume: '289M',
+    icon: 'https://cryptologos.cc/logos/aave-aave-logo.png',
+  },
+];
+
+export const ExploreScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { favorites } = useFavorites();
+  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '1m' | '1y'>('24h');
+  const [sortBy, setSortBy] = useState<'marketCap' | 'volume' | 'priceChange'>('marketCap');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const trendingTokens = [
-    { symbol: 'ETH', name: 'Ethereum', price: '$1,800.00', change: '+2.5%' },
-    { symbol: 'BTC', name: 'Bitcoin', price: '$42,000.00', change: '+1.8%' },
-    { symbol: 'UNI', name: 'Uniswap', price: '$5.20', change: '-0.5%' },
-    { symbol: 'LINK', name: 'Chainlink', price: '$15.80', change: '+3.2%' },
-  ];
-
-  const categories = [
-    'DeFi', 'NFTs', 'Gaming', 'Layer 2', 'Metaverse'
-  ];
+  const filteredTokens = INITIAL_TOKENS.filter(token =>
+    token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search tokens and NFTs"
-          placeholderTextColor="#999"
-        />
-      </View>
+    <SafeAreaView style={styles.container}>
+      <Header
+        address="0x1234567890abcdef"
+        onAvatarPress={() => {}}
+        onSearchPress={() => navigation.navigate('Search')}
+      />
 
-      <View style={styles.categoriesContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {categories.map((category, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.categoryButton}
+      <ScrollView style={styles.content}>
+        {favorites.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Favorites</Text>
+            {favorites.map(token => (
+              <TouchableOpacity
+                key={token.id}
+                style={styles.tokenCard}
+                onPress={() => navigation.navigate('Token', { token })}
+              >
+                <View style={styles.tokenInfo}>
+                  <View style={styles.tokenIcon}>
+                    {token.icon ? (
+                      <Image source={{ uri: token.icon }} style={styles.tokenIconImage} />
+                    ) : (
+                      <Text style={styles.tokenIconText}>{token.symbol[0]}</Text>
+                    )}
+                  </View>
+                  <View>
+                    <Text style={styles.tokenName}>{token.name}</Text>
+                    <Text style={styles.tokenSymbol}>{token.symbol}</Text>
+                  </View>
+                </View>
+                <View style={styles.tokenValue}>
+                  <Text style={styles.tokenPrice}>${token.price}</Text>
+                  <Text style={[styles.tokenChange, { color: token.change < 0 ? '#FF4D4D' : '#00C853' }]}>
+                    {token.change > 0 ? '+' : ''}{token.change}%
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Top Charts</Text>
+            <TouchableOpacity onPress={() => {}}>
+              <Text style={styles.timeframeText}>Last {timeframe}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#666" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search tokens..."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          <View style={styles.sortTabs}>
+            <TouchableOpacity 
+              style={[styles.sortTab, sortBy === 'marketCap' && styles.sortTabActive]}
+              onPress={() => setSortBy('marketCap')}
             >
-              <Text style={styles.categoryText}>{category}</Text>
+              <Text style={[styles.sortTabText, sortBy === 'marketCap' && styles.sortTabTextActive]}>
+                Market cap
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.sortTab, sortBy === 'volume' && styles.sortTabActive]}
+              onPress={() => setSortBy('volume')}
+            >
+              <Text style={[styles.sortTabText, sortBy === 'volume' && styles.sortTabTextActive]}>
+                Volume
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.sortTab, sortBy === 'priceChange' && styles.sortTabActive]}
+              onPress={() => setSortBy('priceChange')}
+            >
+              <Text style={[styles.sortTabText, sortBy === 'priceChange' && styles.sortTabTextActive]}>
+                Price change
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {filteredTokens.map((token, index) => (
+            <TouchableOpacity
+              key={token.id}
+              style={styles.tokenCard}
+              onPress={() => navigation.navigate('Token', { token })}
+            >
+              <View style={styles.tokenInfo}>
+                <Text style={styles.tokenRank}>{index + 1}</Text>
+                <View style={styles.tokenIcon}>
+                  {token.icon ? (
+                    <Image source={{ uri: token.icon }} style={styles.tokenIconImage} />
+                  ) : (
+                    <Text style={styles.tokenIconText}>{token.symbol[0]}</Text>
+                  )}
+                </View>
+                <View>
+                  <Text style={styles.tokenName}>{token.name}</Text>
+                  <Text style={styles.tokenSymbol}>{token.symbol}</Text>
+                </View>
+              </View>
+              <View style={styles.tokenValue}>
+                <Text style={styles.tokenPrice}>${token.price}</Text>
+                <Text style={[styles.tokenChange, { color: token.change < 0 ? '#FF4D4D' : '#00C853' }]}>
+                  {token.change > 0 ? '+' : ''}{token.change}%
+                </Text>
+              </View>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
-
-      <Text style={styles.sectionTitle}>Trending</Text>
-      {trendingTokens.map((token, index) => (
-        <Card key={index} style={styles.tokenCard}>
-          <View style={styles.tokenRow}>
-            <View style={styles.tokenInfo}>
-              <View style={styles.tokenIcon}>
-                <Text style={styles.tokenIconText}>{token.symbol[0]}</Text>
-              </View>
-              <View>
-                <Text style={styles.tokenName}>{token.name}</Text>
-                <Text style={styles.tokenSymbol}>{token.symbol}</Text>
-              </View>
-            </View>
-            <View style={styles.priceInfo}>
-              <Text style={styles.tokenPrice}>{token.price}</Text>
-              <Text style={[
-                styles.tokenChange,
-                { color: token.change.startsWith('+') ? '#00C853' : '#FF4D4D' }
-              ]}>
-                {token.change}
-              </Text>
-            </View>
-          </View>
-        </Card>
-      ))}
-
-      <Text style={styles.sectionTitle}>Popular Collections</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {[1, 2, 3].map((item) => (
-          <TouchableOpacity key={item} style={styles.collectionCard}>
-            <View style={styles.collectionImagePlaceholder}>
-              <Text style={styles.placeholderText}>NFT</Text>
-            </View>
-            <Text style={styles.collectionName}>Collection {item}</Text>
-            <Text style={styles.collectionFloor}>Floor: 0.5 ETH</Text>
-          </TouchableOpacity>
-        ))}
+        </View>
       </ScrollView>
-    </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -88,48 +215,94 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  searchContainer: {
+  content: {
+    flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
   },
-  searchInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 25,
-    padding: 12,
-    fontSize: 16,
+  section: {
+    marginBottom: 24,
   },
-  categoriesContainer: {
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-  },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-    marginHorizontal: 8,
-  },
-  categoryText: {
-    color: '#666',
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    margin: 16,
-  },
-  tokenCard: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-  },
-  tokenRow: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  timeframeText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#000',
+  },
+  sortTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  sortTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  sortTabActive: {
+    backgroundColor: '#FF007A',
+  },
+  sortTabText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  sortTabTextActive: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  tokenCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tokenInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  tokenRank: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginRight: 12,
+    minWidth: 24,
   },
   tokenIcon: {
     width: 40,
@@ -139,6 +312,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  tokenIconImage: {
+    width: '100%',
+    height: '100%',
   },
   tokenIconText: {
     color: '#FFF',
@@ -148,45 +326,25 @@ const styles = StyleSheet.create({
   tokenName: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#000',
   },
   tokenSymbol: {
+    fontSize: 14,
     color: '#666',
     marginTop: 4,
   },
-  priceInfo: {
+  tokenValue: {
     alignItems: 'flex-end',
+    minWidth: 100,
   },
   tokenPrice: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#000',
+    textAlign: 'right',
   },
   tokenChange: {
-    marginTop: 4,
-  },
-  collectionCard: {
-    width: 200,
-    marginHorizontal: 8,
-    marginBottom: 16,
-  },
-  collectionImagePlaceholder: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 24,
-    color: '#999',
-  },
-  collectionName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  collectionFloor: {
-    color: '#666',
+    fontSize: 14,
     marginTop: 4,
   },
 });

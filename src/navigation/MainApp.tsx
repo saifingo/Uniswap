@@ -8,6 +8,7 @@ import { BuyScreen } from '../screens/Buy/BuyScreen';
 import { SendScreen } from '../screens/Send/SendScreen';
 import { ExploreScreen } from '../screens/Explore/ExploreScreen';
 import { SearchScreen } from '../screens/Search/SearchScreen';
+import { TokenDetailsScreen } from '../screens/Token/TokenDetailsScreen';
 
 type TabParamList = {
   Home: undefined;
@@ -20,6 +21,8 @@ type TabParamList = {
 type StackParamList = {
   TabHome: undefined;
   Search: undefined;
+  Token: { token: any };
+  Buy: { token?: any };
 };
 
 type IconProps = {
@@ -106,6 +109,22 @@ export const MainApp: React.FC = () => {
         options={{
           headerShown: false,
           presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="Token"
+        component={TokenDetailsScreen}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="Buy"
+        component={BuyScreen}
+        options={{
+          headerShown: false,
+          presentation: 'card',
         }}
       />
     </Stack.Navigator>
