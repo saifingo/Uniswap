@@ -1,32 +1,39 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../../components/common/Card';
 import { PriceChart } from '../../components/charts/PriceChart';
 import { Header } from '../../components/common/Header';
+import { WalletService } from '../../services/walletService';
+import { EthereumService } from '../../services/ethereumService';
+import { SolanaService } from '../../services/solanaService';
+import { PriceService } from '../../services/priceService';
+import { StorageService, WalletInfo } from '../../services/storage';
+import { getTokenIconUrl } from '../../services/tokenIconService';
+
+interface Token {
+  name: string;
+  symbol: string;
+  balance: string;
+  value: string;
+  change: number;
+  logo?: string;
+}
 
 export const HomeScreen = ({ navigation }: any) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('D');
-  const dummyData = {
-    portfolio: {
-      value: '2,650.32',
-      change: -0.54,
-    },
-    chartData: {
-      data: [100, 120, 115, 130, 125, 135, 130],
-      labels: ['H', 'D', 'W', 'M', 'Y'],
-    },
-    tokens: [
-      { name: 'Ether', symbol: 'ETH', balance: '0.213', value: '405.60', change: -0.54 },
-      { name: 'Compound', symbol: 'COMP', balance: '14.32', value: '897.59', change: -1.56 },
-      { name: 'Dai', symbol: 'DAI', balance: '50.13', value: '50.13', change: 0.00 },
-      { name: 'Bitcoin', symbol: 'BTC', balance: '0.015', value: '650.00', change: 1.25 },
-      { name: 'Chainlink', symbol: 'LINK', balance: '25.5', value: '382.50', change: 2.34 },
-      { name: 'Uniswap', symbol: 'UNI', balance: '45.2', value: '225.10', change: -0.75 },
-      { name: 'Polygon', symbol: 'MATIC', balance: '1250.0', value: '875.00', change: 3.15 },
-    ],
-  };
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeWallet, setActiveWallet] = useState<WalletInfo | null>(null);
+  const [walletAddresses, setWalletAddresses] = useState<{ ethereum: string; solana: string } | null>(null);
+  const [portfolioValue, setPortfolioValue] = useState('0.00');
+  const [portfolioChange, setPortfolioChange] = useState(0);
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [chartData, setChartData] = useState({
+    data: [100, 120, 115, 130, 125, 135, 130],
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  });
 
   const timeframes = [
     { id: 'H', label: 'Hour' },
@@ -35,26 +42,184 @@ export const HomeScreen = ({ navigation }: any) => {
     { id: 'Y', label: 'Year' },
   ];
 
+  // Fetch wallet data
+  const fetchWalletData = async () => {
+    try {
+      console.log('Fetching wallet data...');
+      
+      // Get active wallet info
+      const wallet = await StorageService.getActiveWallet();
+      if (!wallet) {
+        console.log('No active wallet found');
+        setLoading(false);
+        return;
+      }
+      
+      setActiveWallet(wallet);
+      const addresses = {
+        ethereum: wallet.ethereumAddress,
+        solana: wallet.solanaAddress,
+      };
+      setWalletAddresses(addresses);
+      console.log('Active wallet:', wallet.name);
+      console.log('Wallet addresses:', addresses);
+
+      // Fetch balances and prices in parallel
+      const [ethBalance, ethTokens, solBalance, solTokens, prices] = await Promise.all([
+        EthereumService.getEthBalance(addresses.ethereum).catch(() => '0'),
+        EthereumService.getTokenBalances(addresses.ethereum).catch(() => []),
+        SolanaService.getSolBalance(addresses.solana).catch(() => 0),
+        SolanaService.getTokenBalances(addresses.solana).catch(() => []),
+        PriceService.fetchTokenPrices(['ethereum', 'solana', 'usd-coin', 'tether']).catch(() => []),
+      ]);
+
+      console.log('ETH Balance:', ethBalance);
+      console.log('SOL Balance:', solBalance);
+      console.log('Prices:', prices);
+
+      // Create price map
+      const priceMap: Record<string, { price: number; change: number }> = {};
+      prices.forEach((token: any) => {
+        priceMap[token.symbol.toUpperCase()] = {
+          price: token.current_price || 0,
+          change: token.price_change_percentage_24h || 0,
+        };
+      });
+
+      // Build tokens array
+      const allTokens: Token[] = [];
+      let totalValue = 0;
+
+      // Add ETH
+      if (parseFloat(ethBalance) > 0) {
+        const ethPrice = priceMap['ETH']?.price || 0;
+        const ethValue = parseFloat(ethBalance) * ethPrice;
+        totalValue += ethValue;
+        allTokens.push({
+          name: 'Ethereum',
+          symbol: 'ETH',
+          balance: parseFloat(ethBalance).toFixed(4),
+          value: ethValue.toFixed(2),
+          change: priceMap['ETH']?.change || 0,
+          logo: getTokenIconUrl('ETH', undefined, 'ethereum'),
+        });
+      }
+
+      // Add ERC20 tokens
+      ethTokens.forEach((token: any) => {
+        const balance = parseFloat(token.balance);
+        if (balance > 0) {
+          const price = priceMap[token.symbol]?.price || 0;
+          const value = balance * price;
+          totalValue += value;
+          allTokens.push({
+            name: token.name,
+            symbol: token.symbol,
+            balance: balance.toFixed(4),
+            value: value.toFixed(2),
+            change: priceMap[token.symbol]?.change || 0,
+            logo: getTokenIconUrl(token.symbol, token.contractAddress, 'ethereum', token.logo),
+          });
+        }
+      });
+
+      // Add SOL
+      if (solBalance > 0) {
+        const solPrice = priceMap['SOL']?.price || 0;
+        const solValue = solBalance * solPrice;
+        totalValue += solValue;
+        allTokens.push({
+          name: 'Solana',
+          symbol: 'SOL',
+          balance: solBalance.toFixed(4),
+          value: solValue.toFixed(2),
+          change: priceMap['SOL']?.change || 0,
+          logo: getTokenIconUrl('SOL', undefined, 'solana'),
+        });
+      }
+
+      // Add SPL tokens
+      solTokens.forEach((token: any) => {
+        if (token.balance > 0) {
+          const price = priceMap[token.symbol || '']?.price || 0;
+          const value = token.balance * price;
+          totalValue += value;
+          allTokens.push({
+            name: token.name || 'Unknown',
+            symbol: token.symbol || 'UNKNOWN',
+            balance: token.balance.toFixed(4),
+            value: value.toFixed(2),
+            change: priceMap[token.symbol || '']?.change || 0,
+            logo: getTokenIconUrl(token.symbol || 'UNKNOWN', token.mint, 'solana'),
+          });
+        }
+      });
+
+      // Update state
+      setTokens(allTokens);
+      setPortfolioValue(totalValue.toFixed(2));
+      
+      // Calculate average change
+      const avgChange = allTokens.length > 0
+        ? allTokens.reduce((sum, t) => sum + t.change, 0) / allTokens.length
+        : 0;
+      setPortfolioChange(avgChange);
+
+      console.log('Portfolio value:', totalValue);
+      console.log('Total tokens:', allTokens.length);
+    } catch (error) {
+      console.error('Error fetching wallet data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
+
+  // Handle refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchWalletData();
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#FF007A" />
+        <Text style={styles.loadingText}>Loading portfolio...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Header
-        address="0x1234567890abcdef"
-        onAvatarPress={() => {}}
+        address={walletAddresses?.ethereum || '0x0000000000000000'}
+        walletName={activeWallet?.name}
         onSearchPress={() => navigation.navigate('Search')}
       />
       
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF007A']} />
+        }
+      >
         <Card style={styles.portfolioCard}>
           <View style={styles.portfolioHeader}>
-            <Text style={styles.portfolioValue}>${dummyData.portfolio.value}</Text>
-            <Text style={[styles.change, { color: dummyData.portfolio.change < 0 ? '#FF4D4D' : '#00C853' }]}>
-              {dummyData.portfolio.change}%
+            <Text style={styles.portfolioValue}>${portfolioValue}</Text>
+            <Text style={[styles.change, { color: portfolioChange < 0 ? '#FF4D4D' : '#00C853' }]}>
+              {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}%
             </Text>
           </View>
 
           <PriceChart 
-            data={dummyData.chartData.data}
-            labels={dummyData.chartData.labels}
+            data={chartData.data}
+            labels={chartData.labels}
             color="#FF007A"
           />
 
@@ -102,18 +267,27 @@ export const HomeScreen = ({ navigation }: any) => {
         </View>
 
         <Text style={styles.sectionTitle}>My Tokens</Text>
-        {dummyData.tokens.map((token, index) => (
-          <Card key={index} style={styles.tokenCard}>
-            <TouchableOpacity 
-              style={styles.tokenRow}
-              onPress={() => navigation.navigate('TokenDetails', { token })}
-            >
-              <View style={styles.tokenInfo}>
-                <View style={styles.tokenIcon}>
-                  <Text style={styles.tokenIconText}>{token.symbol[0]}</Text>
-                </View>
-                <View>
-                  <Text style={styles.tokenName}>{token.name}</Text>
+        {tokens.length === 0 ? (
+          <Card style={styles.tokenCard}>
+            <Text style={styles.emptyText}>No tokens found. Your wallet is empty.</Text>
+          </Card>
+        ) : (
+          tokens.map((token: Token, index: number) => (
+            <Card key={index} style={styles.tokenCard}>
+              <TouchableOpacity 
+                style={styles.tokenRow}
+                onPress={() => navigation.navigate('TokenDetails', { token })}
+              >
+                <View style={styles.tokenInfo}>
+                  {token.logo ? (
+                    <Image source={{ uri: token.logo }} style={styles.tokenIcon} />
+                  ) : (
+                    <View style={styles.tokenIconPlaceholder}>
+                      <Text style={styles.tokenIconText}>{token.symbol[0]}</Text>
+                    </View>
+                  )}
+                  <View>
+                    <Text style={styles.tokenName}>{token.name}</Text>
                   <Text style={styles.tokenBalance}>{token.balance} {token.symbol}</Text>
                 </View>
               </View>
@@ -125,7 +299,8 @@ export const HomeScreen = ({ navigation }: any) => {
               </View>
             </TouchableOpacity>
           </Card>
-        ))}
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -135,6 +310,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    padding: 20,
+    fontSize: 14,
   },
   scrollView: {
     flex: 1,
@@ -226,6 +416,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tokenIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  tokenIconPlaceholder: {
     width: 40,
     height: 40,
     borderRadius: 20,

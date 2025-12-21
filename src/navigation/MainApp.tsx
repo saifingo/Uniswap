@@ -9,6 +9,7 @@ import { SendScreen } from '../screens/Send/SendScreen';
 import { ExploreScreen } from '../screens/Explore/ExploreScreen';
 import { SearchScreen } from '../screens/Search/SearchScreen';
 import { TokenDetailsScreen } from '../screens/Token/TokenDetailsScreen';
+import { WalletManagementScreen } from '../screens/Wallet/WalletManagementScreen';
 
 type TabParamList = {
   Home: undefined;
@@ -23,6 +24,7 @@ type StackParamList = {
   Search: undefined;
   Token: { token: any };
   Buy: { token?: any };
+  WalletManagement: undefined;
 };
 
 type IconProps = {
@@ -122,6 +124,14 @@ export const MainApp: React.FC = () => {
       <Stack.Screen
         name="Buy"
         component={BuyScreen}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="WalletManagement"
+        component={WalletManagementScreen}
         options={{
           headerShown: false,
           presentation: 'card',

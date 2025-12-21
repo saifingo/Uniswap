@@ -8,34 +8,73 @@ import {
   Alert,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { ethers } from 'ethers';
+import { WalletService } from '../../services/walletService';
 
 export const ImportWalletScreen = ({ navigation }: any) => {
   const [phrase, setPhrase] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
 
-  const validateAndImport = () => {
+  const validateAndImport = async () => {
+    console.log('=== Import Wallet Started ===');
+    console.log('Phrase length:', phrase.length);
+    console.log('Phrase word count:', phrase.trim().split(/\s+/).length);
+
+    if (!phrase || phrase.trim() === '') {
+      console.log('Error: Empty phrase');
+      Alert.alert('Error', 'Please enter your recovery phrase');
+      return;
+    }
+
+    setIsImporting(true);
+    console.log('Import state set to true');
+
     try {
-      // Validate the mnemonic phrase
-      if (!ethers.utils.isValidMnemonic(phrase)) {
-        Alert.alert('Error', 'Invalid recovery phrase. Please check and try again.');
-        return;
+      console.log('Calling WalletService.importWallet...');
+      
+      // Import wallet using WalletService
+      const wallet = await WalletService.importWallet(phrase.trim());
+      
+      console.log('Wallet imported successfully!');
+      console.log('ETH Address:', wallet.ethereum.address);
+      console.log('SOL Address:', wallet.solana.address);
+
+      // Show success message and navigate
+      Alert.alert(
+        'Success! ✅',
+        `Wallet imported successfully!\n\nETH: ${wallet.ethereum.address.substring(0, 10)}...\nSOL: ${wallet.solana.address.substring(0, 10)}...`
+      );
+
+      // Navigate to main app after short delay
+      console.log('Navigating to MainApp...');
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainApp' }],
+        });
+      }, 1500);
+    } catch (error: any) {
+      console.error('=== Import Error ===');
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message);
+      console.error('Full error:', error);
+      
+      // Show user-friendly error message
+      let errorMessage = 'Failed to import wallet. Please try again.';
+      
+      if (error?.message?.includes('Invalid')) {
+        errorMessage = 'Invalid seed phrase. Please check your words and try again.';
+      } else if (error?.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error?.message) {
+        errorMessage = `Error: ${error.message}`;
       }
-
-      // Here you would typically:
-      // 1. Create wallet from mnemonic
-      // 2. Save the wallet securely
-      // 3. Set up authentication
-      // 4. Navigate to home
-
-      // For now, we'll just navigate to home
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainApp' }],
-      });
-    } catch (error) {
-      console.error('Error importing wallet:', error);
-      Alert.alert('Error', 'Failed to import wallet');
+      
+      Alert.alert('Import Failed ❌', errorMessage);
+    } finally {
+      console.log('Import process completed, resetting state');
+      setIsImporting(false);
     }
   };
 
@@ -78,12 +117,16 @@ export const ImportWalletScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.importButton,
-            !phrase && styles.importButtonDisabled
+            (!phrase || isImporting) && styles.importButtonDisabled
           ]}
           onPress={validateAndImport}
-          disabled={!phrase}
+          disabled={!phrase || isImporting}
         >
-          <Text style={styles.buttonText}>Import Wallet</Text>
+          {isImporting ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>Import Wallet</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -1,4 +1,6 @@
 import './src/utils/base64Polyfill';
+import { Buffer } from 'buffer';
+global.Buffer = Buffer;
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { FavoritesProvider } from './src/context/FavoritesContext';

@@ -9,31 +9,21 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import * as Crypto from 'expo-crypto';
-import '@ethersproject/shims';
-import { ethers } from 'ethers';
+import { WalletService } from '../../services/walletService';
 
 export const CreateWalletScreen = ({ navigation }: any) => {
   const [mnemonic, setMnemonic] = useState('');
-
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const generateWallet = async () => {
     setIsGenerating(true);
     try {
-      // Generate random bytes for entropy
-      const randomBytes = await Crypto.getRandomBytesAsync(16);
-      // Convert bytes to hex string for entropy
-      const entropy = Array.from(randomBytes)
-        .map((b: number) => b.toString(16).padStart(2, '0'))
-        .join('');
-
-      // Generate wallet with additional entropy
-      const wallet = ethers.Wallet.createRandom({ entropy });
-      if (!wallet.mnemonic) {
-        throw new Error('Failed to generate mnemonic');
-      }
-      setMnemonic(wallet.mnemonic.phrase);
+      // Create wallet using WalletService
+      const wallet = await WalletService.createWallet();
+      
+      // Display the mnemonic to user
+      setMnemonic(wallet.mnemonic);
     } catch (error) {
       console.error('Error generating wallet:', error);
       Alert.alert(
@@ -51,17 +41,20 @@ export const CreateWalletScreen = ({ navigation }: any) => {
       return;
     }
 
-    // Here you would typically:
-    // 1. Save the wallet securely
-    // 2. Set up authentication
-    // 3. Navigate to home
-    
-    // For now, we'll just navigate to home
-    // In a real app, you'd want to persist this state
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'MainApp' }],
-    });
+    // Show confirmation and navigate
+    Alert.alert(
+      'Important! ⚠️',
+      'Make sure you have saved your 12-word recovery phrase. You will need it to recover your wallet.\n\nNavigating to home screen...'
+    );
+
+    // Navigate to main app after short delay
+    console.log('Navigating to MainApp from CreateWallet...');
+    setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainApp' }],
+      });
+    }, 2000);
   };
 
   return (

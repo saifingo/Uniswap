@@ -2,22 +2,29 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 
 interface HeaderProps {
   address: string;
-  onAvatarPress: () => void;
   onSearchPress: () => void;
+  walletName?: string;
 }
 
-export const Header = ({ address, onAvatarPress, onSearchPress }: HeaderProps) => {
+export const Header = ({ address, onSearchPress, walletName }: HeaderProps) => {
+  const navigation = useNavigation();
   const [searchScale] = React.useState(() => new Animated.Value(1));
+  
   const shortenAddress = (addr: string) => {
-    return addr.slice(0, 8) + '.eth';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const handleAvatarPress = () => {
+    navigation.navigate('WalletManagement' as never);
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.avatarContainer} onPress={onAvatarPress}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={handleAvatarPress}>
         <LinearGradient
           colors={['#FF007A', '#FF6B00']}
           start={{ x: 0, y: 0 }}
@@ -29,8 +36,11 @@ export const Header = ({ address, onAvatarPress, onSearchPress }: HeaderProps) =
             style={styles.avatar}
           />
         </LinearGradient>
-        <Text style={styles.address}>{shortenAddress(address)}</Text>
-        <Ionicons name="chevron-down" size={20} color="#000" />
+        <View style={styles.addressInfo}>
+          {walletName && <Text style={styles.walletName}>{walletName}</Text>}
+          <Text style={styles.address}>{shortenAddress(address)}</Text>
+        </View>
+        <Ionicons name="chevron-down" size={16} color="#666" />
       </TouchableOpacity>
       
       <TouchableOpacity 
@@ -84,10 +94,18 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     backgroundColor: '#FFF',
   },
-  address: {
+  addressInfo: {
     marginHorizontal: 8,
-    fontSize: 16,
+  },
+  walletName: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#000',
+  },
+  address: {
+    fontSize: 11,
+    color: '#666',
+    fontFamily: 'monospace',
   },
   searchButton: {
     width: 40,
