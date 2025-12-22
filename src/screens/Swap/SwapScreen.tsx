@@ -108,59 +108,78 @@ export const SwapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       setLoading(true);
       const wallet = await StorageService.getActiveWallet();
-      if (!wallet) return;
+      if (!wallet) {
+        console.log('No active wallet found');
+        setLoading(false);
+        return;
+      }
 
       const allTokens: Token[] = [];
 
-      const ethBalance = await EthereumService.getEthBalance(wallet.ethereumAddress);
-      const ethPriceData = await PriceService.getTokenPrice('ethereum');
-      
-      allTokens.push({
-        id: 'eth',
-        name: 'Ethereum',
-        symbol: 'ETH',
-        price: ethPriceData?.current_price || 0,
-        balance: ethBalance.toFixed(6),
-        logo: getTokenIconUrl('ETH'),
-        chain: 'ethereum',
-        decimals: 18,
-      });
+      try {
+        const ethBalance = await EthereumService.getEthBalance(wallet.ethereumAddress);
+        const ethPrice = await PriceService.fetchTokenPrice('ethereum');
+        
+        allTokens.push({
+          id: 'eth',
+          name: 'Ethereum',
+          symbol: 'ETH',
+          price: ethPrice || 0,
+          balance: ethBalance.toString(),
+          logo: getTokenIconUrl('ETH'),
+          chain: 'ethereum',
+          decimals: 18,
+        });
+      } catch (error) {
+        console.error('Error loading ETH:', error);
+      }
 
-      const solBalance = await SolanaService.getSolBalance(wallet.solanaAddress);
-      const solPriceData = await PriceService.getTokenPrice('solana');
-      
-      allTokens.push({
-        id: 'sol',
-        name: 'Solana',
-        symbol: 'SOL',
-        price: solPriceData?.current_price || 0,
-        balance: solBalance.toFixed(6),
-        logo: getTokenIconUrl('SOL'),
-        chain: 'solana',
-        decimals: 9,
-      });
+      try {
+        const solBalance = await SolanaService.getSolBalance(wallet.solanaAddress);
+        const solPrice = await PriceService.fetchTokenPrice('solana');
+        
+        allTokens.push({
+          id: 'sol',
+          name: 'Solana',
+          symbol: 'SOL',
+          price: solPrice || 0,
+          balance: solBalance.toString(),
+          logo: getTokenIconUrl('SOL'),
+          chain: 'solana',
+          decimals: 9,
+        });
+      } catch (error) {
+        console.error('Error loading SOL:', error);
+      }
 
-      const ethTokens = await EthereumService.getTokenBalances(wallet.ethereumAddress);
-      const symbols = ethTokens.map((t: any) => t.symbol.toLowerCase());
-      const prices = await PriceService.getMultiplePrices(symbols);
-      
-      ethTokens.forEach((token: any) => {
-        if (parseFloat(token.balance) > 0) {
-          const priceData = prices[token.symbol.toLowerCase()];
-          allTokens.push({
-            id: token.contractAddress,
-            symbol: token.symbol,
-            name: token.name,
-            balance: parseFloat(token.balance).toFixed(6),
-            price: priceData?.current_price || 0,
-            logo: getTokenIconUrl(token.symbol, token.contractAddress, 'ethereum'),
-            address: token.contractAddress,
-            chain: 'ethereum',
-            decimals: token.decimals || 18,
-          });
+      try {
+        const ethTokens = await EthereumService.getTokenBalances(wallet.ethereumAddress);
+        
+        for (const token of ethTokens) {
+          if (parseFloat(token.balance) > 0) {
+            try {
+              const price = await PriceService.fetchTokenPrice(token.symbol.toLowerCase());
+              allTokens.push({
+                id: token.contractAddress,
+                symbol: token.symbol,
+                name: token.name,
+                balance: token.balance,
+                price: price || 0,
+                logo: getTokenIconUrl(token.symbol, token.contractAddress, 'ethereum'),
+                address: token.contractAddress,
+                chain: 'ethereum',
+                decimals: token.decimals || 18,
+              });
+            } catch (error) {
+              console.error(`Error loading price for ${token.symbol}:`, error);
+            }
+          }
         }
-      });
+      } catch (error) {
+        console.error('Error loading ERC20 tokens:', error);
+      }
 
+      console.log('Loaded tokens:', allTokens.length);
       setTokens(allTokens);
       if (allTokens.length > 0) {
         setFromToken(allTokens[0]);
