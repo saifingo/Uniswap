@@ -201,6 +201,12 @@ export const SwapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setEstimatingQuote(true);
       
       const fromValue = parseFloat(fromAmount);
+      
+      if (!fromToken.price || !toToken.price || fromToken.price === 0) {
+        console.log('Invalid token prices');
+        return;
+      }
+      
       const rate = toToken.price / fromToken.price;
       const estimatedTo = fromValue * rate;
       
@@ -211,12 +217,14 @@ export const SwapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setPriceImpact(impact.toFixed(2));
       
       if (fromToken.chain === 'ethereum') {
-        const gasPrice = await EthereumService.getGasPrice();
-        const gasLimit = 200000;
-        const gasCost = (gasPrice * gasLimit) / 1e18;
-        const ethPriceData = await PriceService.getTokenPrice('ethereum');
-        const gasCostUSD = gasCost * (ethPriceData?.current_price || 0);
-        setGasEstimate(gasCostUSD.toFixed(2));
+        try {
+          const ethPrice = await PriceService.fetchTokenPrice('ethereum');
+          const gasCost = 0.002;
+          const gasCostUSD = gasCost * (ethPrice || 0);
+          setGasEstimate(gasCostUSD.toFixed(2));
+        } catch (error) {
+          setGasEstimate('5.00');
+        }
       } else {
         setGasEstimate('0.01');
       }
