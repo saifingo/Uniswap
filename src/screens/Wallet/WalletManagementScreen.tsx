@@ -19,6 +19,7 @@ export const WalletManagementScreen = ({ navigation }: any) => {
   const [editingWallet, setEditingWallet] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showAddWalletModal, setShowAddWalletModal] = useState(false);
 
   useEffect(() => {
     loadWallets();
@@ -73,6 +74,45 @@ export const WalletManagementScreen = ({ navigation }: any) => {
     }
   };
 
+  const handleAddWallet = () => {
+    setShowAddWalletModal(true);
+  };
+
+  const handleExportWallet = async (wallet: WalletInfo) => {
+    Alert.alert(
+      'Export Wallet',
+      'This will show your private recovery phrase. Make sure no one is watching your screen.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Show Phrase',
+          onPress: async () => {
+            try {
+              const mnemonic = await StorageService.getSecure(`wallet_mnemonic_${wallet.id}`);
+              if (mnemonic) {
+                Alert.alert(
+                  'Recovery Phrase',
+                  mnemonic,
+                  [
+                    { text: 'Copy', onPress: () => {
+                      // Copy to clipboard
+                      Alert.alert('Copied', 'Recovery phrase copied to clipboard');
+                    }},
+                    { text: 'Close' }
+                  ]
+                );
+              } else {
+                Alert.alert('Error', 'Could not retrieve recovery phrase');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to export wallet');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const shortenAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -92,7 +132,7 @@ export const WalletManagementScreen = ({ navigation }: any) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Wallets</Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate('ImportWallet')}
+          onPress={handleAddWallet}
           style={styles.addButton}
         >
           <Ionicons name="add-circle" size={28} color="#FF007A" />
@@ -155,6 +195,10 @@ export const WalletManagementScreen = ({ navigation }: any) => {
                         {
                           text: 'Rename',
                           onPress: () => handleRenameWallet(wallet),
+                        },
+                        {
+                          text: 'Export Seed Phrase',
+                          onPress: () => handleExportWallet(wallet),
                         },
                         {
                           text: 'Delete',
@@ -235,6 +279,58 @@ export const WalletManagementScreen = ({ navigation }: any) => {
                 <Text style={styles.modalSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Wallet Modal */}
+      <Modal visible={showAddWalletModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.addWalletModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Wallet</Text>
+              <TouchableOpacity onPress={() => setShowAddWalletModal(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.addWalletOption}
+              onPress={() => {
+                setShowAddWalletModal(false);
+                navigation.navigate('ImportWallet');
+              }}
+            >
+              <View style={styles.addWalletIconContainer}>
+                <Ionicons name="download-outline" size={32} color="#FF007A" />
+              </View>
+              <View style={styles.addWalletTextContainer}>
+                <Text style={styles.addWalletOptionTitle}>Import Wallet</Text>
+                <Text style={styles.addWalletOptionSubtitle}>
+                  Import an existing wallet using your recovery phrase
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#CCC" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.addWalletOption}
+              onPress={() => {
+                setShowAddWalletModal(false);
+                navigation.navigate('CreateWallet');
+              }}
+            >
+              <View style={styles.addWalletIconContainer}>
+                <Ionicons name="add-circle-outline" size={32} color="#00C853" />
+              </View>
+              <View style={styles.addWalletTextContainer}>
+                <Text style={styles.addWalletOptionTitle}>Create New Wallet</Text>
+                <Text style={styles.addWalletOptionSubtitle}>
+                  Generate a new wallet with a recovery phrase
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#CCC" />
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -450,5 +546,52 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  addWalletModal: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxHeight: '50%',
+    position: 'absolute',
+    bottom: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  addWalletOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  addWalletIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  addWalletTextContainer: {
+    flex: 1,
+  },
+  addWalletOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  addWalletOptionSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
   },
 });

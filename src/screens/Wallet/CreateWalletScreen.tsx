@@ -8,7 +8,9 @@ import {
   Alert,
   SafeAreaView,
   ActivityIndicator,
+  Clipboard,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { WalletService } from '../../services/walletService';
 
 export const CreateWalletScreen = ({ navigation }: any) => {
@@ -35,11 +37,26 @@ export const CreateWalletScreen = ({ navigation }: any) => {
     }
   };
 
+  const copyToClipboard = () => {
+    if (mnemonic) {
+      Clipboard.setString(mnemonic);
+      Alert.alert('Copied! ✅', 'Recovery phrase copied to clipboard');
+    }
+  };
+
   const handleContinue = () => {
+    // Prevent double-click
+    if (isSaving) {
+      console.log('Already saving, ignoring...');
+      return;
+    }
+
     if (!mnemonic) {
       Alert.alert('Error', 'Please generate a wallet first');
       return;
     }
+
+    setIsSaving(true);
 
     // Show confirmation and navigate
     Alert.alert(
@@ -74,6 +91,13 @@ export const CreateWalletScreen = ({ navigation }: any) => {
                   </View>
                 ))}
               </View>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={copyToClipboard}
+              >
+                <Ionicons name="copy-outline" size={20} color="#FF007A" />
+                <Text style={styles.copyButtonText}>Copy to Clipboard</Text>
+              </TouchableOpacity>
               <Text style={styles.warning}>
                 ⚠️ Write down these words in the correct order and store them safely.
                 Never share them with anyone!
@@ -101,10 +125,15 @@ export const CreateWalletScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.continueButton}
+              style={[styles.continueButton, isSaving && styles.continueButtonDisabled]}
               onPress={handleContinue}
+              disabled={isSaving}
             >
-              <Text style={styles.buttonText}>I've Saved My Phrase</Text>
+              {isSaving ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.buttonText}>I've Saved My Phrase</Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -185,6 +214,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#00C853',
     borderRadius: 25,
     paddingVertical: 16,
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  continueButtonDisabled: {
+    backgroundColor: '#80E4A0',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#FF007A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  copyButtonText: {
+    color: '#FF007A',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   buttonText: {
     color: '#FFF',

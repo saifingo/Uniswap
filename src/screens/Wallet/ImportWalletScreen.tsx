@@ -17,6 +17,12 @@ export const ImportWalletScreen = ({ navigation }: any) => {
   const [isImporting, setIsImporting] = useState(false);
 
   const validateAndImport = async () => {
+    // Prevent double-click
+    if (isImporting) {
+      console.log('Import already in progress, ignoring...');
+      return;
+    }
+
     console.log('=== Import Wallet Started ===');
     console.log('Phrase length:', phrase.length);
     console.log('Phrase word count:', phrase.trim().split(/\s+/).length);
