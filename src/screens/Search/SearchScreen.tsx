@@ -12,24 +12,22 @@ import {
   KeyboardAvoidingView,
   Platform,
   ListRenderItem,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getTokenIconUrl } from '../../services/tokenIconService';
 
 interface Token {
   id: string;
   symbol: string;
   name: string;
-  price: string;
+  price: number;
   change: number;
+  icon?: string;
+  marketCap?: number;
+  volume?: number;
 }
 
-const INITIAL_TOKENS: Token[] = [
-  { id: '1', symbol: 'ETH', name: 'Ethereum', price: '1,800.00', change: 2.5 },
-  { id: '2', symbol: 'BTC', name: 'Bitcoin', price: '42,000.00', change: 1.8 },
-  { id: '3', symbol: 'USDT', name: 'Tether', price: '1.00', change: 0.0 },
-  { id: '4', symbol: 'BNB', name: 'Binance Coin', price: '240.50', change: -1.2 },
-  { id: '5', symbol: 'XRP', name: 'Ripple', price: '0.50', change: 3.4 },
-];
 
 type SearchScreenProps = {
   navigation: any;
@@ -41,7 +39,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Simulated token data - replace with actual API call
+  // Search tokens from CoinGecko API
   const searchTokens = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setTokens([]);
@@ -52,15 +50,48 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
     setError(null);
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const filteredTokens = INITIAL_TOKENS.filter(token => 
-        token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      console.log('Searching tokens:', searchQuery);
+      
+      // Search from CoinGecko API
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(searchQuery)}`
       );
 
-      setTokens(filteredTokens);
+      if (!response.ok) {
+        throw new Error('Failed to search tokens');
+      }
+
+      const data = await response.json();
+      
+      // Get top 20 results
+      const coinIds = data.coins.slice(0, 20).map((coin: any) => coin.id).join(',');
+      
+      if (coinIds) {
+        // Fetch detailed data for these coins
+        const detailsResponse = await fetch(
+          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`
+        );
+
+        if (detailsResponse.ok) {
+          const detailsData = await detailsResponse.json();
+          
+          const formattedTokens: Token[] = detailsData.map((coin: any) => ({
+            id: coin.id,
+            name: coin.name,
+            symbol: coin.symbol.toUpperCase(),
+            price: coin.current_price || 0,
+            change: coin.price_change_percentage_24h || 0,
+            icon: coin.image || getTokenIconUrl(coin.symbol.toUpperCase()),
+            marketCap: coin.market_cap,
+            volume: coin.total_volume,
+          }));
+
+          setTokens(formattedTokens);
+          console.log(`Found ${formattedTokens.length} tokens`);
+        }
+      } else {
+        setTokens([]);
+      }
     } catch (error) {
       console.error('Error searching tokens:', error);
       setError('Failed to search tokens. Please try again.');
@@ -88,7 +119,11 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
     >
       <View style={styles.tokenInfo}>
         <View style={styles.tokenIcon}>
-          <Text style={styles.tokenIconText}>{item.symbol[0]}</Text>
+          {item.icon ? (
+            <Image source={{ uri: item.icon }} style={styles.tokenIconImage} />
+          ) : (
+            <Text style={styles.tokenIconText}>{item.symbol[0]}</Text>
+          )}
         </View>
         <View>
           <Text style={styles.tokenName}>{item.name}</Text>
@@ -96,7 +131,9 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
         </View>
       </View>
       <View style={styles.priceInfo}>
-        <Text style={styles.tokenPrice}>${item.price}</Text>
+        <Text style={styles.tokenPrice}>
+          ${item.price >= 1 ? item.price.toFixed(2) : item.price.toFixed(6)}
+        </Text>
         <Text style={[
           styles.tokenChange,
           { color: item.change >= 0 ? '#00C853' : '#FF4D4D' }
@@ -238,6 +275,11 @@ const styles = StyleSheet.create<any>({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  tokenIconImage: {
+    width: '100%',
+    height: '100%',
   },
   tokenIconText: {
     color: '#FFF',
