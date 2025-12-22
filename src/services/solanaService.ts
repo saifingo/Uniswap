@@ -1,19 +1,7 @@
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  Transaction,
-  SystemProgram,
-  sendAndConfirmTransaction,
-  LAMPORTS_PER_SOL,
-} from '@solana/web3.js';
-import {
-  getAssociatedTokenAddress,
-  createTransferInstruction,
-  TOKEN_PROGRAM_ID,
-} from '@solana/spl-token';
+// Solana support temporarily disabled for Android compatibility
+// Will be re-enabled with proper React Native compatible packages
+
 import { Platform } from 'react-native';
-import { ENV, NETWORKS } from '../config/env';
 import { StorageService } from './storage';
 
 export interface SolanaTokenBalance {
@@ -66,173 +54,49 @@ const POPULAR_SPL_TOKENS: Record<string, { name: string; symbol: string; coingec
 };
 
 export class SolanaService {
-  private static connection: Connection;
-
   /**
-   * Initialize Solana connection
+   * Initialize Solana connection (stub)
    */
   static initialize() {
-    // Use devnet for web to avoid rate limits and CORS issues
-    let rpcUrl: string;
-    
-    if (Platform.OS === 'web') {
-      console.warn('⚠️ Running on web - using Solana devnet (limited functionality)');
-      rpcUrl = 'https://api.devnet.solana.com';
-    } else {
-      rpcUrl = ENV.NETWORK === 'testnet'
-        ? NETWORKS.solana.testnet
-        : NETWORKS.solana.mainnet;
-    }
-
-    this.connection = new Connection(rpcUrl, 'confirmed');
+    console.log('Solana service disabled - Ethereum only mode');
   }
 
   /**
-   * Get SOL balance for an address
+   * Get SOL balance for an address (stub)
    */
   static async getSolBalance(address: string): Promise<number> {
-    try {
-      if (!this.connection) this.initialize();
-
-      const publicKey = new PublicKey(address);
-      const balance = await this.connection.getBalance(publicKey);
-      return balance / LAMPORTS_PER_SOL;
-    } catch (error) {
-      console.error('Error fetching SOL balance:', error);
-      // Return 0 instead of throwing to avoid breaking the UI
-      return 0;
-    }
+    console.log('Solana disabled - returning 0 balance');
+    return 0;
   }
 
   /**
-   * Get all SPL token balances for an address
+   * Get all SPL token balances for an address (stub)
    */
   static async getTokenBalances(address: string): Promise<SolanaTokenBalance[]> {
-    try {
-      if (!this.connection) this.initialize();
-
-      const publicKey = new PublicKey(address);
-      const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_PROGRAM_ID,
-      });
-
-      const tokens: SolanaTokenBalance[] = [];
-
-      for (const account of tokenAccounts.value) {
-        const info = account.account.data.parsed.info;
-        const mint = info.mint;
-        const balance = info.tokenAmount.uiAmount;
-        const decimals = info.tokenAmount.decimals;
-
-        if (balance > 0) {
-          const metadata = POPULAR_SPL_TOKENS[mint];
-          tokens.push({
-            mint,
-            symbol: metadata?.symbol,
-            name: metadata?.name,
-            balance,
-            decimals,
-          });
-        }
-      }
-
-      return tokens;
-    } catch (error) {
-      console.error('Error fetching token balances:', error);
-      // Return empty array instead of throwing to avoid breaking the UI
-      return [];
-    }
+    console.log('Solana disabled - returning empty token list');
+    return [];
   }
 
   /**
-   * Get transaction history for an address
+   * Get transaction history for an address (stub)
    */
   static async getTransactionHistory(address: string): Promise<SolanaTransaction[]> {
-    try {
-      if (!this.connection) this.initialize();
-
-      const publicKey = new PublicKey(address);
-
-      // Get transaction signatures
-      const signatures = await this.connection.getSignaturesForAddress(publicKey, {
-        limit: 50,
-      });
-
-      // Get transaction details
-      const transactions = await this.connection.getParsedTransactions(
-        signatures.map((sig) => sig.signature),
-        { maxSupportedTransactionVersion: 0 }
-      );
-
-      return transactions.map((tx, index) => ({
-        signature: signatures[index].signature,
-        timestamp: (signatures[index].blockTime || 0) * 1000,
-        type: 'unknown' as const,
-        status: tx?.meta?.err ? 'failed' : 'success',
-      }));
-    } catch (error) {
-      console.error('Error fetching transaction history:', error);
-      throw new Error('Failed to fetch transaction history');
-    }
+    console.log('Solana disabled - returning empty transaction history');
+    return [];
   }
 
   /**
-   * Send SOL transaction
+   * Send SOL transaction (stub)
    */
   static async sendSolTransaction(
     to: string,
     amount: number
   ): Promise<{ success: boolean; signature: string }> {
-    try {
-      if (!this.connection) this.initialize();
-
-      const privateKeyHex = await StorageService.getSolPrivateKey();
-      if (!privateKeyHex) {
-        throw new Error('Wallet not found. Please create or import a wallet.');
-      }
-
-      const privateKeyBuffer = Buffer.from(privateKeyHex, 'hex');
-      const keypair = Keypair.fromSecretKey(privateKeyBuffer);
-
-      // Validate address
-      let toPublicKey: PublicKey;
-      try {
-        toPublicKey = new PublicKey(to);
-      } catch {
-        throw new Error('Invalid recipient address');
-      }
-
-      // Create transaction
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: keypair.publicKey,
-          toPubkey: toPublicKey,
-          lamports: amount * LAMPORTS_PER_SOL,
-        })
-      );
-
-      // Send and confirm
-      const signature = await sendAndConfirmTransaction(this.connection, transaction, [keypair]);
-
-      return {
-        success: true,
-        signature,
-      };
-    } catch (error: any) {
-      console.error('Error sending SOL transaction:', error);
-
-      if (error.message.includes('insufficient')) {
-        throw new Error('Insufficient balance to complete transaction');
-      } else if (error.message.includes('invalid')) {
-        throw new Error('Invalid recipient address');
-      }
-
-      throw new Error(`Transaction failed: ${error.message}`);
-    }
+    throw new Error('Solana transactions are currently disabled. Ethereum only mode.');
   }
 
   /**
-   * Send SPL token transaction
+   * Send SPL token transaction (stub)
    */
   static async sendSPLToken(
     tokenMint: string,
@@ -240,81 +104,22 @@ export class SolanaService {
     amount: number,
     decimals: number
   ): Promise<{ success: boolean; signature: string }> {
-    try {
-      if (!this.connection) this.initialize();
-
-      const privateKeyHex = await StorageService.getSolPrivateKey();
-      if (!privateKeyHex) {
-        throw new Error('Wallet not found');
-      }
-
-      const privateKeyBuffer = Buffer.from(privateKeyHex, 'hex');
-      const keypair = Keypair.fromSecretKey(privateKeyBuffer);
-
-      const mintPublicKey = new PublicKey(tokenMint);
-      const toPublicKey = new PublicKey(to);
-
-      // Get token accounts
-      const fromTokenAccount = await getAssociatedTokenAddress(
-        mintPublicKey,
-        keypair.publicKey
-      );
-      const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, toPublicKey);
-
-      const transaction = new Transaction().add(
-        createTransferInstruction(
-          fromTokenAccount,
-          toTokenAccount,
-          keypair.publicKey,
-          amount * Math.pow(10, decimals),
-          [],
-          TOKEN_PROGRAM_ID
-        )
-      );
-
-      const signature = await sendAndConfirmTransaction(this.connection, transaction, [keypair]);
-
-      return {
-        success: true,
-        signature,
-      };
-    } catch (error: any) {
-      console.error('Error sending SPL token:', error);
-
-      if (error.message.includes('insufficient')) {
-        throw new Error('Insufficient token balance');
-      }
-
-      throw new Error(`Transaction failed: ${error.message}`);
-    }
+    throw new Error('Solana transactions are currently disabled. Ethereum only mode.');
   }
 
   /**
-   * Estimate transaction fee
+   * Estimate transaction fee (stub)
    */
   static async estimateFee(): Promise<number> {
-    try {
-      if (!this.connection) this.initialize();
-
-      const recentBlockhash = await this.connection.getRecentBlockhash();
-      const fee = recentBlockhash.feeCalculator.lamportsPerSignature;
-      return fee / LAMPORTS_PER_SOL;
-    } catch (error) {
-      console.error('Error estimating fee:', error);
-      return 0.000005; // Fallback estimate
-    }
+    return 0;
   }
 
   /**
-   * Validate Solana address
+   * Validate Solana address (stub)
    */
   static isValidAddress(address: string): boolean {
-    try {
-      new PublicKey(address);
-      return true;
-    } catch {
-      return false;
-    }
+    // Basic validation for Solana address format (base58, 32-44 chars)
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
   }
 }
 
