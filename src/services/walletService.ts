@@ -106,6 +106,9 @@ export class WalletService {
       // Store wallet info in multi-wallet list
       await StorageService.saveWalletInfo(walletInfo);
 
+      // Set as active wallet automatically
+      await StorageService.setActiveWallet(walletId);
+
       // Store securely with wallet ID
       await StorageService.setSecure(`wallet_mnemonic_${walletId}`, mnemonic);
       await StorageService.setSecure(`eth_private_key_${walletId}`, ethPrivateKey);
