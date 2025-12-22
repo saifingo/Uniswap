@@ -8,11 +8,15 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFavorites } from '../../context/FavoritesContext';
+import { StorageService } from '../../services/storage';
+import { EthereumService } from '../../services/ethereumService';
+import { SolanaService } from '../../services/solanaService';
 
 interface Token {
   id: string;
@@ -33,24 +37,159 @@ interface ChartData {
   }[];
 }
 
-const CHART_DATA: ChartData = {
-  labels: ['H', 'D', 'W', 'Y'],
-  datasets: [{
-    data: [20, 45, 28, 80, 99, 43],
-  }],
-};
+interface UserPosition {
+  balance: number;
+  usdValue: number;
+  pnl24h: number;
+  pnlPercentage: number;
+}
 
 const screenWidth = Dimensions.get('window').width;
 
 export const TokenDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
   const { token } = route.params;
-  const [timeframe, setTimeframe] = useState<'H' | 'D' | 'W' | 'Y'>('D');
+  const [timeframe, setTimeframe] = useState<'H' | 'D' | 'W' | 'M' | 'Y'>('D');
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const [isTokenFavorite, setIsTokenFavorite] = useState(false);
+  const [chartData, setChartData] = useState<ChartData>({ labels: [], datasets: [{ data: [] }] });
+  const [loadingChart, setLoadingChart] = useState(true);
+  const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
+  const [loadingPosition, setLoadingPosition] = useState(true);
 
   useEffect(() => {
     setIsTokenFavorite(isFavorite(token.id));
   }, [isFavorite, token.id]);
+
+  useEffect(() => {
+    loadChartData();
+  }, [timeframe, token]);
+
+  useEffect(() => {
+    loadUserPosition();
+  }, [token]);
+
+  const loadChartData = async () => {
+    try {
+      setLoadingChart(true);
+      
+      const days = {
+        'H': 1,
+        'D': 1,
+        'W': 7,
+        'M': 30,
+        'Y': 365,
+      }[timeframe];
+
+      const coinId = token.id || token.symbol.toLowerCase();
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`
+      );
+      
+      if (!response.ok) {
+        console.log('Failed to fetch chart data');
+        return;
+      }
+      
+      const data = await response.json();
+      const prices = data.prices || [];
+      
+      let chartPrices: number[] = [];
+      let chartLabels: string[] = [];
+      
+      if (timeframe === 'H') {
+        const filtered = prices.filter((_: any, i: number) => i % 4 === 0);
+        chartPrices = filtered.map((p: any) => p[1]);
+        chartLabels = filtered.map((p: any) => {
+          const date = new Date(p[0]);
+          return date.getHours() + 'h';
+        });
+      } else if (timeframe === 'D') {
+        const filtered = prices.filter((_: any, i: number) => i % 3 === 0);
+        chartPrices = filtered.map((p: any) => p[1]);
+        chartLabels = filtered.map((p: any) => {
+          const date = new Date(p[0]);
+          return date.getHours() + 'h';
+        });
+      } else if (timeframe === 'W') {
+        chartPrices = prices.map((p: any) => p[1]);
+        chartLabels = prices.map((p: any) => {
+          const date = new Date(p[0]);
+          return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+        });
+      } else if (timeframe === 'M') {
+        const filtered = prices.filter((_: any, i: number) => i % 5 === 0);
+        chartPrices = filtered.map((p: any) => p[1]);
+        chartLabels = filtered.map((p: any) => {
+          const date = new Date(p[0]);
+          return (date.getMonth() + 1) + '/' + date.getDate();
+        });
+      } else {
+        const filtered = prices.filter((_: any, i: number) => i % 30 === 0);
+        chartPrices = filtered.map((p: any) => p[1]);
+        chartLabels = filtered.map((p: any) => {
+          const date = new Date(p[0]);
+          return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
+        });
+      }
+      
+      setChartData({
+        labels: chartLabels.slice(0, 7),
+        datasets: [{ data: chartPrices.slice(0, 7) }],
+      });
+    } catch (error) {
+      console.error('Error loading chart data:', error);
+    } finally {
+      setLoadingChart(false);
+    }
+  };
+
+  const loadUserPosition = async () => {
+    try {
+      setLoadingPosition(true);
+      const wallet = await StorageService.getActiveWallet();
+      if (!wallet) {
+        setUserPosition(null);
+        return;
+      }
+
+      let balance = 0;
+      const symbol = token.symbol.toUpperCase();
+
+      if (symbol === 'ETH') {
+        balance = await EthereumService.getEthBalance(wallet.ethereumAddress);
+      } else if (symbol === 'SOL') {
+        balance = await SolanaService.getSolBalance(wallet.solanaAddress);
+      } else {
+        const ethTokens = await EthereumService.getTokenBalances(wallet.ethereumAddress);
+        const tokenData = ethTokens.find((t: any) => t.symbol.toUpperCase() === symbol);
+        if (tokenData) {
+          balance = parseFloat(tokenData.balance);
+        }
+      }
+
+      if (balance > 0) {
+        const currentPrice = parseFloat(token.price.replace(/,/g, ''));
+        const usdValue = balance * currentPrice;
+        
+        const pnlPercentage = token.change || 0;
+        const pnl24h = (usdValue * pnlPercentage) / 100;
+        
+        setUserPosition({
+          balance,
+          usdValue,
+          pnl24h,
+          pnlPercentage,
+        });
+      } else {
+        setUserPosition(null);
+      }
+    } catch (error) {
+      console.error('Error loading user position:', error);
+      setUserPosition(null);
+    } finally {
+      setLoadingPosition(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -105,33 +244,44 @@ export const TokenDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ 
         </View>
 
         <View style={styles.chartContainer}>
-          <LineChart
-            data={CHART_DATA}
-            width={screenWidth - 32}
-            height={220}
-            chartConfig={{
-              backgroundGradientFrom: '#FFF',
-              backgroundGradientTo: '#FFF',
-              decimalPlaces: 2,
-              color: () => '#FF007A',
-              labelColor: () => '#666',
-              style: {
-                borderRadius: 16,
-              },
-              propsForDots: {
-                r: '6',
-                strokeWidth: '2',
-                stroke: '#FF007A',
-              },
-            }}
-            bezier
-            style={styles.chart}
-            withInnerLines={false}
-            withOuterLines={false}
-          />
+          {loadingChart ? (
+            <View style={styles.chartLoading}>
+              <ActivityIndicator size="large" color="#FF007A" />
+              <Text style={styles.loadingText}>Loading chart...</Text>
+            </View>
+          ) : chartData.datasets[0].data.length > 0 ? (
+            <LineChart
+              data={chartData}
+              width={screenWidth - 32}
+              height={220}
+              chartConfig={{
+                backgroundGradientFrom: '#FFF',
+                backgroundGradientTo: '#FFF',
+                decimalPlaces: 0,
+                color: () => token.change < 0 ? '#FF4D4D' : '#00C853',
+                labelColor: () => '#666',
+                style: {
+                  borderRadius: 16,
+                },
+                propsForDots: {
+                  r: '6',
+                  strokeWidth: '2',
+                  stroke: token.change < 0 ? '#FF4D4D' : '#00C853',
+                },
+              }}
+              bezier
+              style={styles.chart}
+              withInnerLines={false}
+              withOuterLines={false}
+            />
+          ) : (
+            <View style={styles.chartLoading}>
+              <Text style={styles.loadingText}>No chart data available</Text>
+            </View>
+          )}
 
           <View style={styles.timeframes}>
-            {['H', 'D', 'W', 'Y'].map((frame) => (
+            {['H', 'D', 'W', 'M', 'Y'].map((frame) => (
               <TouchableOpacity
                 key={frame}
                 style={[styles.timeframe, timeframe === frame && styles.timeframeActive]}
@@ -145,30 +295,51 @@ export const TokenDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ 
           </View>
         </View>
 
-        <View style={styles.holdingCard}>
-          <Text style={styles.holdingTitle}>My position</Text>
-          <View style={styles.holdingInfo}>
-            <View style={styles.holdingAmount}>
-              <View style={styles.tokenIconSmall}>
-                {token.icon ? (
-                  <Image source={{ uri: token.icon }} style={styles.tokenIconImage} />
-                ) : (
-                  <Text style={styles.tokenIconTextSmall}>{token.symbol[0]}</Text>
-                )}
-              </View>
-              <Text style={styles.holdingValue}>21.246 {token.symbol}</Text>
-            </View>
-            <Text style={styles.holdingUsdValue}>$351.91</Text>
+        {loadingPosition ? (
+          <View style={styles.holdingCard}>
+            <ActivityIndicator size="small" color="#FF007A" />
           </View>
-        </View>
+        ) : userPosition ? (
+          <View style={styles.holdingCard}>
+            <Text style={styles.holdingTitle}>My position</Text>
+            <View style={styles.holdingInfo}>
+              <View style={styles.holdingAmount}>
+                <View style={styles.tokenIconSmall}>
+                  {token.icon ? (
+                    <Image source={{ uri: token.icon }} style={styles.tokenIconImage} />
+                  ) : (
+                    <Text style={styles.tokenIconTextSmall}>{token.symbol[0]}</Text>
+                  )}
+                </View>
+                <Text style={styles.holdingValue}>
+                  {userPosition.balance.toFixed(6)} {token.symbol}
+                </Text>
+              </View>
+              <Text style={styles.holdingUsdValue}>
+                ${userPosition.usdValue.toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.pnlContainer}>
+              <Text style={styles.pnlLabel}>24h PnL</Text>
+              <View style={styles.pnlValues}>
+                <Text style={[styles.pnlAmount, { color: userPosition.pnl24h >= 0 ? '#00C853' : '#FF4D4D' }]}>
+                  {userPosition.pnl24h >= 0 ? '+' : ''}${Math.abs(userPosition.pnl24h).toFixed(2)}
+                </Text>
+                <Text style={[styles.pnlPercentage, { color: userPosition.pnlPercentage >= 0 ? '#00C853' : '#FF4D4D' }]}>
+                  ({userPosition.pnlPercentage >= 0 ? '+' : ''}{userPosition.pnlPercentage.toFixed(2)}%)
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.actions}>
           <TouchableOpacity
             style={[styles.actionButton, styles.buyButton]}
-            onPress={() => navigation.navigate('Buy', { token })}
+            onPress={() => navigation.navigate('Receive', { token })}
           >
-            <Ionicons name="card" size={24} color="#FFF" />
-            <Text style={styles.actionButtonText}>Buy</Text>
+            <Ionicons name="download-outline" size={24} color="#FFF" />
+            <Text style={styles.actionButtonText}>Receive</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -348,6 +519,40 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#000',
+  },
+  pnlContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  pnlLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  pnlValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pnlAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pnlPercentage: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  chartLoading: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
   },
   actions: {
     flexDirection: 'row',
