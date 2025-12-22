@@ -10,6 +10,8 @@ import { ExploreScreen } from '../screens/Explore/ExploreScreen';
 import { SearchScreen } from '../screens/Search/SearchScreen';
 import { TokenDetailsScreen } from '../screens/Token/TokenDetailsScreen';
 import { WalletManagementScreen } from '../screens/Wallet/WalletManagementScreen';
+import { ImportWalletScreen } from '../screens/Wallet/ImportWalletScreen';
+import { CreateWalletScreen } from '../screens/Wallet/CreateWalletScreen';
 
 type TabParamList = {
   Home: undefined;
@@ -25,6 +27,8 @@ type StackParamList = {
   Token: { token: any };
   Buy: { token?: any };
   WalletManagement: undefined;
+  ImportWallet: undefined;
+  CreateWallet: undefined;
 };
 
 type IconProps = {
@@ -132,6 +136,22 @@ export const MainApp: React.FC = () => {
       <Stack.Screen
         name="WalletManagement"
         component={WalletManagementScreen}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="ImportWallet"
+        component={ImportWalletScreen}
+        options={{
+          headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="CreateWallet"
+        component={CreateWalletScreen}
         options={{
           headerShown: false,
           presentation: 'card',

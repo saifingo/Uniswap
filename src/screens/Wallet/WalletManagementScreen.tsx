@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Clipboard,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -95,8 +96,8 @@ export const WalletManagementScreen = ({ navigation }: any) => {
                   mnemonic,
                   [
                     { text: 'Copy', onPress: () => {
-                      // Copy to clipboard
-                      Alert.alert('Copied', 'Recovery phrase copied to clipboard');
+                      Clipboard.setString(mnemonic);
+                      Alert.alert('Copied! ✅', 'Recovery phrase copied to clipboard');
                     }},
                     { text: 'Close' }
                   ]
