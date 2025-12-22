@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/Home/HomeScreen';
 import { SwapScreen } from '../screens/Swap/SwapScreen';
-import { BuyScreen } from '../screens/Buy/BuyScreen';
+import { ReceiveScreen } from '../screens/Receive/ReceiveScreen';
 import { SendScreen } from '../screens/Send/SendScreen';
 import { ExploreScreen } from '../screens/Explore/ExploreScreen';
 import { SearchScreen } from '../screens/Search/SearchScreen';
@@ -17,7 +17,7 @@ type TabParamList = {
   Home: undefined;
   Swap: undefined;
   Send: undefined;
-  Buy: undefined;
+  Receive: undefined;
   Explore: undefined;
 };
 
@@ -25,7 +25,7 @@ type StackParamList = {
   TabHome: undefined;
   Search: undefined;
   Token: { token: any };
-  Buy: { token?: any };
+  Receive: { token?: any };
   WalletManagement: undefined;
   ImportWallet: undefined;
   CreateWallet: undefined;
@@ -84,11 +84,11 @@ const TabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen 
-        name="Buy" 
-        component={BuyScreen}
+        name="Receive" 
+        component={ReceiveScreen}
         options={{
           tabBarIcon: ({ color, size }: IconProps) => (
-            <MaterialCommunityIcons name="credit-card-plus" size={size} color={color} />
+            <Ionicons name="download-outline" size={size} color={color} />
           )
         }}
       />
@@ -126,8 +126,8 @@ export const MainApp: React.FC = () => {
         }}
       />
       <Stack.Screen
-        name="Buy"
-        component={BuyScreen}
+        name="Receive"
+        component={ReceiveScreen}
         options={{
           headerShown: false,
           presentation: 'card',
