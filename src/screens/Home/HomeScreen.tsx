@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIn
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../../components/common/Card';
-import { PriceChart } from '../../components/charts/PriceChart';
 import { Header } from '../../components/common/Header';
 import { WalletService } from '../../services/walletService';
 import { EthereumService } from '../../services/ethereumService';
@@ -22,7 +21,6 @@ interface Token {
 }
 
 export const HomeScreen = ({ navigation }: any) => {
-  const [selectedTimeframe, setSelectedTimeframe] = useState('D');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeWallet, setActiveWallet] = useState<WalletInfo | null>(null);
@@ -30,17 +28,6 @@ export const HomeScreen = ({ navigation }: any) => {
   const [portfolioValue, setPortfolioValue] = useState('0.00');
   const [portfolioChange, setPortfolioChange] = useState(0);
   const [tokens, setTokens] = useState<Token[]>([]);
-  const [chartData, setChartData] = useState({
-    data: [100, 120, 115, 130, 125, 135, 130],
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  });
-
-  const timeframes = [
-    { id: 'H', label: 'Hour' },
-    { id: 'D', label: 'Day' },
-    { id: 'W', label: 'Week' },
-    { id: 'Y', label: 'Year' },
-  ];
 
   // Fetch wallet data
   const fetchWalletData = async () => {
@@ -211,34 +198,37 @@ export const HomeScreen = ({ navigation }: any) => {
       >
         <Card style={styles.portfolioCard}>
           <View style={styles.portfolioHeader}>
-            <Text style={styles.portfolioValue}>${portfolioValue}</Text>
-            <Text style={[styles.change, { color: portfolioChange < 0 ? '#FF4D4D' : '#00C853' }]}>
-              {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}%
-            </Text>
+            <View style={styles.portfolioInfo}>
+              <Text style={styles.portfolioLabel}>Total Balance</Text>
+              <Text style={styles.portfolioValue}>${portfolioValue}</Text>
+              <View style={[styles.changeBadge, { backgroundColor: portfolioChange < 0 ? '#FFE5E5' : '#E8F5E9' }]}>
+                <Ionicons 
+                  name={portfolioChange >= 0 ? 'trending-up' : 'trending-down'} 
+                  size={16} 
+                  color={portfolioChange < 0 ? '#FF4D4D' : '#00C853'} 
+                />
+                <Text style={[styles.change, { color: portfolioChange < 0 ? '#FF4D4D' : '#00C853' }]}>
+                  {portfolioChange >= 0 ? '+' : ''}{portfolioChange.toFixed(2)}%
+                </Text>
+              </View>
+            </View>
           </View>
 
-          <PriceChart 
-            data={chartData.data}
-            labels={chartData.labels}
-            color="#FF007A"
-          />
-
-          <View style={styles.timeframeContainer}>
-            {timeframes.map((tf) => (
-              <TouchableOpacity
-                key={tf.id}
-                style={[
-                  styles.timeframeButton,
-                  selectedTimeframe === tf.id && styles.timeframeButtonActive
-                ]}
-                onPress={() => setSelectedTimeframe(tf.id)}
-              >
-                <Text style={[
-                  styles.timeframeText,
-                  selectedTimeframe === tf.id && styles.timeframeTextActive
-                ]}>{tf.id}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Assets</Text>
+              <Text style={styles.statValue}>{tokens.length}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Chains</Text>
+              <Text style={styles.statValue}>2</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Wallet</Text>
+              <Text style={styles.statValue}>{activeWallet?.name || 'Main'}</Text>
+            </View>
           </View>
         </Card>
 
@@ -334,20 +324,63 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   portfolioHeader: {
-    marginBottom: 16,
+    marginBottom: 24,
+  },
+  portfolioInfo: {
+    alignItems: 'flex-start',
   },
   portfolioLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
+    marginBottom: 8,
+    fontWeight: '500',
   },
   portfolioValue: {
-    fontSize: 32,
+    fontSize: 42,
     fontWeight: 'bold',
     color: '#000',
-    marginVertical: 4,
+    marginBottom: 12,
+  },
+  changeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
   },
   change: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  statValue: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E0E0E0',
   },
   actions: {
     flexDirection: 'row',
