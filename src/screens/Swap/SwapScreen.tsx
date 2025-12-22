@@ -467,30 +467,37 @@ export const SwapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.tokenList}>
-              {tokens.map((token) => (
-                <TouchableOpacity
-                  key={token.id}
-                  style={styles.tokenItem}
-                  onPress={() => {
-                    setFromToken(token);
-                    setShowFromSelector(false);
-                  }}
-                >
-                  {token.logo && (
-                    <Image source={{ uri: token.logo }} style={styles.tokenItemLogo} />
-                  )}
-                  <View style={styles.tokenItemInfo}>
-                    <Text style={styles.tokenItemSymbol}>{token.symbol}</Text>
-                    <Text style={styles.tokenItemName}>{token.name}</Text>
-                  </View>
-                  <View style={styles.tokenItemBalance}>
-                    <Text style={styles.tokenItemBalanceText}>{token.balance}</Text>
-                    <Text style={styles.tokenItemBalanceUSD}>
-                      ${(parseFloat(token.balance) * token.price).toFixed(2)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {tokens.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No tokens found</Text>
+                  <Text style={styles.emptyStateSubtext}>Loading your tokens...</Text>
+                </View>
+              ) : (
+                tokens.map((token) => (
+                  <TouchableOpacity
+                    key={token.id}
+                    style={styles.tokenItem}
+                    onPress={() => {
+                      setFromToken(token);
+                      setShowFromSelector(false);
+                    }}
+                  >
+                    {token.logo && (
+                      <Image source={{ uri: token.logo }} style={styles.tokenItemLogo} />
+                    )}
+                    <View style={styles.tokenItemInfo}>
+                      <Text style={styles.tokenItemSymbol}>{token.symbol}</Text>
+                      <Text style={styles.tokenItemName}>{token.name}</Text>
+                    </View>
+                    <View style={styles.tokenItemBalance}>
+                      <Text style={styles.tokenItemBalanceText}>{token.balance}</Text>
+                      <Text style={styles.tokenItemBalanceUSD}>
+                        ${(parseFloat(token.balance) * token.price).toFixed(2)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -512,30 +519,37 @@ export const SwapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.tokenList}>
-              {tokens.map((token) => (
-                <TouchableOpacity
-                  key={token.id}
-                  style={styles.tokenItem}
-                  onPress={() => {
-                    setToToken(token);
-                    setShowToSelector(false);
-                  }}
-                >
-                  {token.logo && (
-                    <Image source={{ uri: token.logo }} style={styles.tokenItemLogo} />
-                  )}
-                  <View style={styles.tokenItemInfo}>
-                    <Text style={styles.tokenItemSymbol}>{token.symbol}</Text>
-                    <Text style={styles.tokenItemName}>{token.name}</Text>
-                  </View>
-                  <View style={styles.tokenItemBalance}>
-                    <Text style={styles.tokenItemBalanceText}>{token.balance}</Text>
-                    <Text style={styles.tokenItemBalanceUSD}>
-                      ${(parseFloat(token.balance) * token.price).toFixed(2)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {tokens.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No tokens found</Text>
+                  <Text style={styles.emptyStateSubtext}>Loading your tokens...</Text>
+                </View>
+              ) : (
+                tokens.map((token) => (
+                  <TouchableOpacity
+                    key={token.id}
+                    style={styles.tokenItem}
+                    onPress={() => {
+                      setToToken(token);
+                      setShowToSelector(false);
+                    }}
+                  >
+                    {token.logo && (
+                      <Image source={{ uri: token.logo }} style={styles.tokenItemLogo} />
+                    )}
+                    <View style={styles.tokenItemInfo}>
+                      <Text style={styles.tokenItemSymbol}>{token.symbol}</Text>
+                      <Text style={styles.tokenItemName}>{token.name}</Text>
+                    </View>
+                    <View style={styles.tokenItemBalance}>
+                      <Text style={styles.tokenItemBalanceText}>{token.balance}</Text>
+                      <Text style={styles.tokenItemBalanceUSD}>
+                        ${(parseFloat(token.balance) * token.price).toFixed(2)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -926,5 +940,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginLeft: 8,
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#999',
   },
 });

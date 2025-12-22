@@ -43,10 +43,7 @@ const TabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: {
-          backgroundColor: '#FF007A',
-        },
-        headerTintColor: '#fff',
+        headerShown: false,
         tabBarActiveTintColor: '#FF007A',
         tabBarInactiveTintColor: '#666',
         tabBarStyle: {
